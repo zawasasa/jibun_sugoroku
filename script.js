@@ -7,7 +7,8 @@ let gameState = {
     winner: null,
     currentEvent: null,
     soundEnabled: true,
-    isMoving: false // コマ移動中フラグ
+    isMoving: false, // コマ移動中フラグ
+    finishedPlayers: [] // ゴールしたプレイヤーの順位リスト
 };
 
 // ===== プレイヤー絵文字 =====
@@ -242,7 +243,9 @@ function startGame() {
             name: nameInput.value || `プレイヤー${i + 1}`,
             color: selectedColor ? selectedColor.dataset.color : ['red', 'blue', 'green', 'yellow'][i],
             emoji: playerEmojis[i], // 絵文字を追加
-            position: 0
+            position: 0,
+            rank: null, // 順位（null = まだゴールしていない）
+            isFinished: false // ゴール済みフラグ
         });
     }
 
@@ -436,9 +439,31 @@ async function movePlayer(steps, skipEvent = false) {
     updatePlayerStatus();
 
     // ゴール判定
-    if (currentPlayer.position >= 60) {
+    if (currentPlayer.position >= 60 && !currentPlayer.isFinished) {
         await playSound('goal'); // ゴール音
-        setTimeout(() => endGame(), 1000);
+
+        // プレイヤーをゴール済みにする
+        currentPlayer.isFinished = true;
+        currentPlayer.rank = gameState.finishedPlayers.length + 1;
+        gameState.finishedPlayers.push(currentPlayer);
+
+        // まだゴールしていないプレイヤーの数を確認
+        const remainingPlayers = gameState.players.filter(p => !p.isFinished).length;
+
+        // 最後から2番目のプレイヤーがゴールしたらゲーム終了（1人残し）
+        if (remainingPlayers <= 1) {
+            // 最後のプレイヤーに順位を付ける
+            const lastPlayer = gameState.players.find(p => !p.isFinished);
+            if (lastPlayer) {
+                lastPlayer.rank = gameState.players.length;
+                lastPlayer.isFinished = true;
+            }
+            setTimeout(() => endGame(), 1000);
+            return;
+        }
+
+        // まだプレイヤーが残っている場合は次のターンへ
+        setTimeout(() => nextTurn(), 1000);
         return;
     }
 
@@ -646,7 +671,23 @@ async function applyMoveEffect(moveValue) {
 
 // ===== 次のターン =====
 function nextTurn() {
-    gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    // 次のプレイヤーを探す（ゴール済みのプレイヤーはスキップ）
+    let nextIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    let attempts = 0;
+
+    // ゴールしていないプレイヤーを探す
+    while (gameState.players[nextIndex].isFinished && attempts < gameState.players.length) {
+        nextIndex = (nextIndex + 1) % gameState.players.length;
+        attempts++;
+    }
+
+    // すべてのプレイヤーがゴールしている場合はゲーム終了
+    if (attempts >= gameState.players.length) {
+        endGame();
+        return;
+    }
+
+    gameState.currentPlayerIndex = nextIndex;
     updatePlayerStatus();
     updateCurrentTurn();
     elements.rollDiceBtn.disabled = false;
@@ -656,35 +697,43 @@ function nextTurn() {
 // ===== ゲーム終了 =====
 function endGame() {
     gameState.isGameOver = true;
-    gameState.winner = gameState.players[gameState.currentPlayerIndex];
+
+    // 1位のプレイヤーを取得
+    const winner = gameState.players.find(p => p.rank === 1);
+    gameState.winner = winner;
 
     elements.gameScreen.style.display = 'none';
     elements.endScreen.style.display = 'block';
 
-    // 順位を計算
-    const sortedPlayers = [...gameState.players].sort((a, b) => b.position - a.position);
+    // 順位でソート（rankがnullの場合は最下位）
+    const sortedPlayers = [...gameState.players].sort((a, b) => {
+        if (a.rank === null) return 1;
+        if (b.rank === null) return -1;
+        return a.rank - b.rank;
+    });
 
     let rankingsHTML = '';
-    sortedPlayers.forEach((player, index) => {
-        const medal = index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🎖️';
-        const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : 'rank-other';
+    sortedPlayers.forEach((player) => {
+        const rank = player.rank || gameState.players.length;
+        const medal = rank === 1 ? '🏆' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🎖️';
+        const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
         rankingsHTML += `
             <div class="ranking-item ${rankClass}">
                 <span class="rank-medal">${medal}</span>
                 <span class="player-marker" style="background: #${getColorHex(player.color)}">${player.emoji}</span>
                 <span class="rank-name">${player.name}</span>
-                <span class="rank-position">${player.position}マス</span>
+                <span class="rank-position">${rank}位 (${player.position}マス)</span>
             </div>
         `;
     });
 
     elements.winnerInfo.innerHTML = `
         <div class="winner-trophy">🎉</div>
-        <div class="winner-title">優勝: ${gameState.winner.name}!</div>
+        <div class="winner-title">優勝: ${winner.name}!</div>
         <div class="winner-marker">
-            <span class="player-marker" style="background: #${getColorHex(gameState.winner.color)}; 
+            <span class="player-marker" style="background: #${getColorHex(winner.color)};
                   width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 30px;">
-                ${gameState.winner.emoji}
+                ${winner.emoji}
             </span>
         </div>
         <div class="rankings-title">最終順位</div>
@@ -705,7 +754,8 @@ function resetGame() {
         winner: null,
         currentEvent: null,
         soundEnabled: soundEnabled,
-        isMoving: false
+        isMoving: false,
+        finishedPlayers: []
     };
 
     elements.setupScreen.style.display = 'block';
