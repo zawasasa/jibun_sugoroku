@@ -483,20 +483,18 @@ async function movePlayer(steps, skipEvent = false) {
 
         // プレイヤーをゴール済みにする
         currentPlayer.isFinished = true;
-        currentPlayer.rank = gameState.finishedPlayers.length + 1;
-        gameState.finishedPlayers.push(currentPlayer);
+        currentPlayer.rank = 1; // 1位
 
-        // まだゴールしていないプレイヤーの数を確認
-        const remainingPlayers = gameState.players.filter(p => !p.isFinished).length;
+        // 残りのプレイヤーを位置（ゴールに近い順）で順位付け
+        const remainingPlayers = gameState.players.filter(p => !p.isFinished);
+        remainingPlayers.sort((a, b) => b.position - a.position); // 位置が大きい順
+        remainingPlayers.forEach((player, index) => {
+            player.rank = index + 2; // 2位から順位付け
+            player.isFinished = true;
+        });
 
-        // すべてのプレイヤーがゴールした場合のみゲーム終了
-        if (remainingPlayers === 0) {
-            setTimeout(() => endGame(), 1000);
-            return;
-        }
-
-        // まだプレイヤーが残っている場合は次のターンへ
-        setTimeout(() => nextTurn(), 1000);
+        // 1人目がゴールしたら即座にゲーム終了
+        setTimeout(() => endGame(), 1000);
         return;
     }
 
