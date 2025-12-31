@@ -11,6 +11,24 @@ body {
     min-height: 100vh;
     color: #333;
     overflow-x: hidden;
+    transition: background 0.6s ease;
+}
+
+/* プレイヤーターン別背景色 */
+body.turn-red {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+}
+
+body.turn-blue {
+    background: linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
+}
+
+body.turn-green {
+    background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+}
+
+body.turn-yellow {
+    background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%);
 }
 
 #app {

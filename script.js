@@ -365,6 +365,9 @@ function updateCurrentTurn() {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     elements.currentPlayerName.textContent = currentPlayer.name;
     elements.currentPlayerName.style.color = `#${getColorHex(currentPlayer.color)}`;
+
+    // 背景色を現在のプレイヤーの色に変更
+    document.body.className = `turn-${currentPlayer.color}`;
 }
 
 // ===== サイコロを振る =====
@@ -696,6 +699,9 @@ function endGame() {
     const winner = gameState.players.find(p => p.rank === 1);
     gameState.winner = winner;
 
+    // 背景色をデフォルトに戻す
+    document.body.className = '';
+
     elements.gameScreen.style.display = 'none';
     elements.endScreen.style.display = 'block';
 
@@ -758,6 +764,9 @@ function resetGame() {
     elements.resetBtn.style.display = 'none';
     elements.diceResult.textContent = '';
     elements.rollDiceBtn.disabled = false;
+
+    // 背景色をデフォルトに戻す
+    document.body.className = '';
 
     generatePlayerInputs();
 }
