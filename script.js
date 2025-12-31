@@ -265,12 +265,12 @@ function generateBoard() {
 
     // 中間マス(1〜59)
     const middleCells = [];
-    // 新しい比率: ポジティブ15個、ネガティブ8個、ニュートラル4個、通常29個、ストップ3個(計59)
+    // 新しい比率: ポジティブ15個、ネガティブ8個、ニュートラル4個、通常32個、ストップ3個(計59)
     // 通常マスを増やしてゲームバランスを改善
     for (let i = 0; i < 15; i++) middleCells.push({ type: 'positive' });
     for (let i = 0; i < 8; i++) middleCells.push({ type: 'negative' });
     for (let i = 0; i < 4; i++) middleCells.push({ type: 'neutral' });
-    for (let i = 0; i < 29; i++) middleCells.push({ type: 'normal' });
+    for (let i = 0; i < 32; i++) middleCells.push({ type: 'normal' });
 
     // シャッフル
     for (let i = middleCells.length - 1; i > 0; i--) {
