@@ -265,12 +265,12 @@ function generateBoard() {
 
     // 中間マス(1〜59)
     const middleCells = [];
-    // 新しい比率: ポジティブ15個、ネガティブ8個、ニュートラル4個、通常29個、ストップ3個(計59)
+    // 新しい比率: ポジティブ15個、ネガティブ8個、ニュートラル4個、通常32個、ストップ3個(計59)
     // 通常マスを増やしてゲームバランスを改善
     for (let i = 0; i < 15; i++) middleCells.push({ type: 'positive' });
     for (let i = 0; i < 8; i++) middleCells.push({ type: 'negative' });
     for (let i = 0; i < 4; i++) middleCells.push({ type: 'neutral' });
-    for (let i = 0; i < 29; i++) middleCells.push({ type: 'normal' });
+    for (let i = 0; i < 32; i++) middleCells.push({ type: 'normal' });
 
     // シャッフル
     for (let i = middleCells.length - 1; i > 0; i--) {
@@ -493,8 +493,8 @@ async function movePlayer(steps, skipEvent = false) {
             player.isFinished = true;
         });
 
-        // 1人目がゴールしたら即座にゲーム終了
-        setTimeout(() => endGame(), 1000);
+        // 優勝モーダルを表示
+        setTimeout(() => showWinnerModal(currentPlayer), 1000);
         return;
     }
 
@@ -698,6 +698,34 @@ async function applyMoveEffect(moveValue) {
     }
 
     elements.executeEventBtn.disabled = false;
+}
+
+// ===== 優勝モーダル表示 =====
+async function showWinnerModal(winner) {
+    // ファンファーレを鳴らす
+    await playSound('goal');
+
+    elements.eventType.textContent = '🏆 優勝！';
+    elements.eventType.className = 'event-type positive';
+    elements.eventText.textContent = `優勝🏆は${winner.name}です！\nおめでとうございます！`;
+    elements.eventEffect.textContent = '';
+    elements.executeEventBtn.textContent = '結果発表へ';
+    elements.executeEventBtn.style.display = 'block';
+
+    // 選択肢ボタンを非表示
+    const choiceButtons = document.getElementById('choiceButtons');
+    if (choiceButtons) choiceButtons.style.display = 'none';
+
+    // モーダルを表示
+    elements.eventModal.classList.add('show');
+
+    // ボタンクリック時の処理を変更
+    elements.executeEventBtn.onclick = () => {
+        elements.eventModal.classList.remove('show');
+        setTimeout(() => endGame(), 500);
+        // イベントリスナーを元に戻す
+        elements.executeEventBtn.onclick = null;
+    };
 }
 
 // ===== 次のターン =====
