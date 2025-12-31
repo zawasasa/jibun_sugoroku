@@ -639,11 +639,12 @@ function executeEvent() {
     } else if (effect.type === 'bonus') {
         // ボーナス: もう一度サイコロを振れる
         elements.eventModal.classList.remove('show');
-        setTimeout(() => {
-            // サイコロを振れる状態に戻す（ターンは継続）
-            elements.diceArea.classList.remove('hidden');
-            elements.rollDiceBtn.disabled = false;
-        }, 500);
+
+        // 即座にサイコロを振れる状態に戻す
+        gameState.isMoving = false;
+        elements.rollDiceBtn.disabled = false;
+        elements.rollDiceBtn.textContent = 'サイコロを振る';
+        elements.executeEventBtn.disabled = false;
     } else if (effect.type === 'warp') {
         // ワープ処理
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
