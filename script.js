@@ -402,7 +402,6 @@ async function rollDice() {
 }
 
 // ===== プレイヤー移動 (段階的アニメーション) =====
-// ===== プレイヤー移動 (段階的アニメーション) =====
 async function movePlayer(steps, skipEvent = false) {
     if (steps === 0) return;
 
@@ -416,7 +415,51 @@ async function movePlayer(steps, skipEvent = false) {
 
     for (let i = 0; i < absSteps; i++) {
         const nextPos = currentPlayer.position + direction;
-        if (nextPos < 0 || nextPos > 60) break;
+
+        // 後退の場合は0未満にならないようにする
+        if (nextPos < 0) break;
+
+        // ゴールを超える場合は一旦60まで進む
+        if (nextPos > 60) {
+            // 残りのステップを計算
+            const remainingSteps = absSteps - i;
+            const overshoot = nextPos - 60;
+
+            // 60まで進む
+            currentPlayer.position = 60;
+            updateBoard();
+            await playSound('move');
+
+            const marker60 = document.querySelector(`[data-position="60"] .cell-player-marker`);
+            if (marker60) {
+                marker60.classList.add('jumping');
+                await new Promise(r => setTimeout(r, 300));
+                marker60.classList.remove('jumping');
+            } else {
+                await new Promise(r => setTimeout(r, 300));
+            }
+
+            // 超えた分だけ引き返す
+            for (let j = 0; j < overshoot; j++) {
+                currentPlayer.position--;
+                if (currentPlayer.position < 0) {
+                    currentPlayer.position = 0;
+                    break;
+                }
+                updateBoard();
+                await playSound('move');
+
+                const markerBack = document.querySelector(`[data-position="${currentPlayer.position}"] .cell-player-marker`);
+                if (markerBack) {
+                    markerBack.classList.add('jumping');
+                    await new Promise(r => setTimeout(r, 300));
+                    markerBack.classList.remove('jumping');
+                } else {
+                    await new Promise(r => setTimeout(r, 300));
+                }
+            }
+            break;
+        }
 
         currentPlayer.position = nextPos;
         updateBoard();
@@ -441,8 +484,8 @@ async function movePlayer(steps, skipEvent = false) {
     gameState.isMoving = false;
     updatePlayerStatus();
 
-    // ゴール判定
-    if (currentPlayer.position >= 60 && !currentPlayer.isFinished) {
+    // ゴール判定（ピッタリ60の場合のみゴール）
+    if (currentPlayer.position === 60 && !currentPlayer.isFinished) {
         await playSound('goal'); // ゴール音
 
         // プレイヤーをゴール済みにする
