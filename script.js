@@ -265,12 +265,12 @@ function generateBoard() {
 
     // 中間マス(1〜59)
     const middleCells = [];
-    // 新しい比率: ポジティブ15個、ネガティブ8個、ニュートラル4個、通常32個、ストップ3個(計59)
-    // 通常マスを増やしてゲームバランスを改善
-    for (let i = 0; i < 15; i++) middleCells.push({ type: 'positive' });
+    // 新しい比率: ポジティブ12個、ネガティブ8個、ニュートラル4個、スペシャル5個、通常30個、ストップ3個(計59)
+    for (let i = 0; i < 12; i++) middleCells.push({ type: 'positive' });
     for (let i = 0; i < 8; i++) middleCells.push({ type: 'negative' });
     for (let i = 0; i < 4; i++) middleCells.push({ type: 'neutral' });
-    for (let i = 0; i < 32; i++) middleCells.push({ type: 'normal' });
+    for (let i = 0; i < 5; i++) middleCells.push({ type: 'special' });
+    for (let i = 0; i < 30; i++) middleCells.push({ type: 'normal' });
 
     // シャッフル
     for (let i = middleCells.length - 1; i > 0; i--) {
@@ -297,18 +297,8 @@ function generateBoard() {
         cellDiv.className = `cell cell-${cell.type}`;
         cellDiv.dataset.position = index;
 
-        let icon = '';
-        if (cell.type === 'start') icon = '🏁';
-        else if (cell.type === 'goal') icon = '🎯';
-        else if (cell.type === 'positive') icon = '🟢';
-        else if (cell.type === 'negative') icon = '🔴';
-        else if (cell.type === 'neutral') icon = '🟡';
-        else if (cell.type === 'stop') icon = '🛑';
-        else icon = '⚪';
-
         cellDiv.innerHTML = `
             <span class="cell-number">${index}</span>
-            <span class="cell-icon">${icon}</span>
             <div class="cell-players"></div>
         `;
 
@@ -506,7 +496,7 @@ async function movePlayer(steps, skipEvent = false) {
 
     // イベント判定
     const cell = gameState.board[currentPlayer.position];
-    if (cell.type === 'positive' || cell.type === 'negative' || cell.type === 'neutral' || cell.type === 'stop') {
+    if (cell.type === 'positive' || cell.type === 'negative' || cell.type === 'neutral' || cell.type === 'stop' || cell.type === 'special') {
         // イベントカード出現音「ジャジャーン」
         await playSound('card');
 
@@ -543,14 +533,18 @@ async function showEvent(eventType) {
         // ニュートラルイベント音を再生
         await playSound('neutral');
     } else if (eventType === 'stop') {
-        randomEvent = {
-            text: '🛑 ストップ！\nどんな出目でも、このマスで一度止まらなければなりません。',
-            effect: { type: 'stop', value: 0 }
-        };
-        typeLabel = '🛑 ストップマス';
+        // ストップマスでもニュートラルイベントをランダムで選ぶ
+        randomEvent = events.neutral[Math.floor(Math.random() * events.neutral.length)];
+        typeLabel = '🛑 ストップマス + ニュートラルイベント';
         typeClass = 'stop';
         // ストップマス音を再生
         await playSound('neutral');
+    } else if (eventType === 'special') {
+        randomEvent = events.special[Math.floor(Math.random() * events.special.length)];
+        typeLabel = '⭐ スペシャルイベント';
+        typeClass = 'special';
+        // スペシャルイベント音を再生
+        await playSound('positive');
     }
 
     gameState.currentEvent = randomEvent;
@@ -581,6 +575,21 @@ async function showEvent(eventType) {
         // サイコロ判定型
         elements.eventEffect.textContent = 'サイコロを振って結果を決めよう!';
         elements.executeEventBtn.textContent = 'サイコロを振る';
+        elements.executeEventBtn.style.display = 'block';
+        const choiceButtons = document.getElementById('choiceButtons');
+        if (choiceButtons) choiceButtons.style.display = 'none';
+    } else if (randomEvent.effect.type === 'bonus') {
+        // ボーナス: もう一度サイコロを振れる
+        elements.eventEffect.textContent = 'もう一度サイコロを振れます!';
+        elements.executeEventBtn.textContent = '了解';
+        elements.executeEventBtn.style.display = 'block';
+        const choiceButtons = document.getElementById('choiceButtons');
+        if (choiceButtons) choiceButtons.style.display = 'none';
+    } else if (randomEvent.effect.type === 'warp') {
+        // ワープ
+        const targetPos = randomEvent.effect.value === 'half' ? Math.floor(60 / 2) : randomEvent.effect.value;
+        elements.eventEffect.textContent = `→ ${targetPos}マスへワープ!`;
+        elements.executeEventBtn.textContent = 'ワープ実行';
         elements.executeEventBtn.style.display = 'block';
         const choiceButtons = document.getElementById('choiceButtons');
         if (choiceButtons) choiceButtons.style.display = 'none';
@@ -627,6 +636,20 @@ function executeEvent() {
     } else if (effect.type === 'dice') {
         // サイコロ判定型
         executeDiceEvent();
+    } else if (effect.type === 'bonus') {
+        // ボーナス: もう一度サイコロを振れる
+        elements.eventModal.classList.remove('show');
+        setTimeout(() => {
+            // サイコロを振れる状態に戻す（ターンは継続）
+            elements.diceArea.classList.remove('hidden');
+            elements.rollDiceBtn.disabled = false;
+        }, 500);
+    } else if (effect.type === 'warp') {
+        // ワープ処理
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+        const targetPos = effect.value === 'half' ? Math.floor(60 / 2) : effect.value;
+        const moveValue = targetPos - currentPlayer.position;
+        applyMoveEffect(moveValue);
     }
 }
 
@@ -647,6 +670,12 @@ function executeDiceEvent() {
         if (conditions.six && diceResult === 6) {
             moveValue = conditions.six.value;
             message = conditions.six.message;
+        } else if (conditions.high && diceResult >= 4) {
+            moveValue = conditions.high.value;
+            message = conditions.high.message;
+        } else if (conditions.low && diceResult <= 3) {
+            moveValue = conditions.low.value;
+            message = conditions.low.message;
         } else if (conditions.even && diceResult % 2 === 0) {
             moveValue = conditions.even.value;
             message = conditions.even.message;
@@ -669,18 +698,30 @@ function executeDiceEvent() {
 // ===== 選択肢型イベント実行 =====
 function executeChoice(choiceIndex) {
     const option = gameState.currentEvent.effect.options[choiceIndex];
-    const moveValue = option.effect.value;
+    const effect = option.effect;
     const message = option.message;
-
-    elements.eventEffect.textContent = `${message} → ${Math.abs(moveValue)}マス${moveValue > 0 ? '進む' : moveValue < 0 ? '戻る' : '移動なし'}!`;
 
     // 選択肢ボタンを非表示
     const choiceButtons = document.getElementById('choiceButtons');
     if (choiceButtons) choiceButtons.style.display = 'none';
 
-    setTimeout(() => {
-        applyMoveEffect(moveValue);
-    }, 1500);
+    if (effect.type === 'warp') {
+        // ワープ処理
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+        const targetPos = effect.value;
+        const moveValue = targetPos - currentPlayer.position;
+        elements.eventEffect.textContent = `${message}`;
+        setTimeout(() => {
+            applyMoveEffect(moveValue);
+        }, 1500);
+    } else if (effect.type === 'move') {
+        // 通常の移動
+        const moveValue = effect.value;
+        elements.eventEffect.textContent = `${message} → ${Math.abs(moveValue)}マス${moveValue > 0 ? '進む' : moveValue < 0 ? '戻る' : '移動なし'}!`;
+        setTimeout(() => {
+            applyMoveEffect(moveValue);
+        }, 1500);
+    }
 }
 
 // ===== 移動効果適用 =====

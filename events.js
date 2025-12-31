@@ -474,5 +474,71 @@ const events = {
         }
       }
     }
+  ],
+
+  // スペシャルイベント: ゲームを盛り上げる特殊効果 (10個)
+  special: [
+    {
+      id: 1,
+      text: "🎁 ボーナスチャンス！もう一度サイコロを振れるよ！",
+      effect: { type: "bonus", value: 1 }
+    },
+    {
+      id: 2,
+      text: "🌟 ワープゾーン発動！5マス前進！",
+      effect: { type: "move", value: 5 }
+    },
+    {
+      id: 3,
+      text: "🔄 位置交換イベント！一番進んでいるプレイヤーと位置を交換！",
+      effect: { type: "swap", target: "first" }
+    },
+    {
+      id: 4,
+      text: "⚡ スピードアップ！次のターン、サイコロの目が2倍になる！",
+      effect: { type: "double_next", value: 1 }
+    },
+    {
+      id: 5,
+      text: "🎪 大逆転チャンス！サイコロを2回振って、好きな方を選べる！",
+      effect: { type: "choice_dice", rolls: 2 }
+    },
+    {
+      id: 6,
+      text: "🎯 ワープ選択！スタートに戻るか、10マス進むか選べる！",
+      effect: {
+        type: "choice",
+        options: [
+          { label: "スタートに戻る", effect: { type: "warp", value: 0 }, message: "スタートに戻った！" },
+          { label: "10マス進む", effect: { type: "move", value: 10 }, message: "10マス前進！" }
+        ]
+      }
+    },
+    {
+      id: 7,
+      text: "🌈 ラッキーゾーン！次の3ターン、ネガティブイベントを無効化！",
+      effect: { type: "shield", turns: 3 }
+    },
+    {
+      id: 8,
+      text: "🎲 運試し！サイコロで4以上なら15マス進む、3以下なら5マス戻る！",
+      effect: {
+        type: "dice",
+        conditions: {
+          high: { type: "move", value: 15, message: "4以上！大成功！" },
+          low: { type: "move", value: -5, message: "3以下...残念！" }
+        }
+      }
+    },
+    {
+      id: 9,
+      text: "🚀 ロケットスタート！ゴールまでの距離の半分まで進める！",
+      effect: { type: "warp", value: "half" }
+    },
+    {
+      id: 10,
+      text: "💫 全員ボーナス！全プレイヤーが3マス進む！（自分は5マス）",
+      effect: { type: "all_move", self: 5, others: 3 }
+    }
   ]
 };
