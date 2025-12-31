@@ -237,7 +237,9 @@ function startGame() {
             emoji: playerEmojis[i], // 絵文字を追加
             position: 0,
             rank: null, // 順位（null = まだゴールしていない）
-            isFinished: false // ゴール済みフラグ
+            isFinished: false, // ゴール済みフラグ
+            doubleNext: false, // 次のターン2倍フラグ
+            shieldTurns: 0 // ネガティブ無効化の残りターン数
         });
     }
 
@@ -372,9 +374,20 @@ async function rollDice() {
         count++;
         if (count > 10) {
             clearInterval(interval);
-            const result = Math.floor(Math.random() * 6) + 1;
-            elements.dice.textContent = result;
-            elements.diceResult.textContent = `${result}が出た!`;
+            let result = Math.floor(Math.random() * 6) + 1;
+            const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+
+            // スピードアップ効果（2倍）をチェック
+            if (currentPlayer.doubleNext) {
+                result = result * 2;
+                elements.dice.textContent = `${result / 2} × 2`;
+                elements.diceResult.textContent = `${result / 2}が出た! スピードアップで2倍 → ${result}!`;
+                currentPlayer.doubleNext = false; // フラグをリセット
+            } else {
+                elements.dice.textContent = result;
+                elements.diceResult.textContent = `${result}が出た!`;
+            }
+
             elements.dice.classList.remove('rolling');
             await playSound('dice'); // サイコロ音
 
@@ -514,6 +527,31 @@ async function showEvent(eventType) {
     let typeLabel = '';
     let typeClass = '';
 
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+
+    // シールド効果でネガティブイベントを無効化
+    if (eventType === 'negative' && currentPlayer.shieldTurns > 0) {
+        typeLabel = '🌈 シールド発動！';
+        typeClass = 'special';
+        elements.eventType.textContent = typeLabel;
+        elements.eventType.className = `event-type ${typeClass}`;
+        elements.eventText.textContent = `ネガティブイベントを無効化！\n（残り${currentPlayer.shieldTurns}ターン）`;
+        elements.eventEffect.textContent = '';
+        elements.executeEventBtn.textContent = '了解';
+        elements.executeEventBtn.style.display = 'block';
+        elements.eventModal.classList.add('show');
+
+        await playSound('positive');
+
+        // モーダルのボタンを押したら次のターンへ
+        elements.executeEventBtn.onclick = () => {
+            elements.eventModal.classList.remove('show');
+            setTimeout(() => nextTurn(), 500);
+            elements.executeEventBtn.onclick = null;
+        };
+        return;
+    }
+
     if (eventType === 'positive') {
         randomEvent = events.positive[Math.floor(Math.random() * events.positive.length)];
         typeLabel = '🟢 ポジティブイベント';
@@ -593,6 +631,41 @@ async function showEvent(eventType) {
         elements.executeEventBtn.style.display = 'block';
         const choiceButtons = document.getElementById('choiceButtons');
         if (choiceButtons) choiceButtons.style.display = 'none';
+    } else if (randomEvent.effect.type === 'choice_dice') {
+        // サイコロ2回振って選ぶ
+        elements.eventEffect.textContent = 'サイコロを2回振って好きな方を選べます！';
+        elements.executeEventBtn.textContent = 'サイコロを振る';
+        elements.executeEventBtn.style.display = 'block';
+        const choiceButtons = document.getElementById('choiceButtons');
+        if (choiceButtons) choiceButtons.style.display = 'none';
+    } else if (randomEvent.effect.type === 'double_next') {
+        // 次ターン2倍
+        elements.eventEffect.textContent = '次のターン、サイコロの目が2倍になります！';
+        elements.executeEventBtn.textContent = '了解';
+        elements.executeEventBtn.style.display = 'block';
+        const choiceButtons = document.getElementById('choiceButtons');
+        if (choiceButtons) choiceButtons.style.display = 'none';
+    } else if (randomEvent.effect.type === 'shield') {
+        // シールド
+        elements.eventEffect.textContent = `次の${randomEvent.effect.turns}ターン、ネガティブイベントを無効化！`;
+        elements.executeEventBtn.textContent = '了解';
+        elements.executeEventBtn.style.display = 'block';
+        const choiceButtons = document.getElementById('choiceButtons');
+        if (choiceButtons) choiceButtons.style.display = 'none';
+    } else if (randomEvent.effect.type === 'swap') {
+        // 位置交換
+        elements.eventEffect.textContent = '一番進んでいるプレイヤーと位置を交換！';
+        elements.executeEventBtn.textContent = '交換実行';
+        elements.executeEventBtn.style.display = 'block';
+        const choiceButtons = document.getElementById('choiceButtons');
+        if (choiceButtons) choiceButtons.style.display = 'none';
+    } else if (randomEvent.effect.type === 'all_move') {
+        // 全員ボーナス
+        elements.eventEffect.textContent = `全員ボーナス！自分は${randomEvent.effect.self}マス、他は${randomEvent.effect.others}マス進む！`;
+        elements.executeEventBtn.textContent = '実行';
+        elements.executeEventBtn.style.display = 'block';
+        const choiceButtons = document.getElementById('choiceButtons');
+        if (choiceButtons) choiceButtons.style.display = 'none';
     } else if (randomEvent.effect.type === 'choice') {
         // 選択肢型
         elements.eventEffect.textContent = 'どちらを選ぶ?';
@@ -639,17 +712,39 @@ function executeEvent() {
     } else if (effect.type === 'bonus') {
         // ボーナス: もう一度サイコロを振れる
         elements.eventModal.classList.remove('show');
-        setTimeout(() => {
-            // サイコロを振れる状態に戻す（ターンは継続）
-            elements.diceArea.classList.remove('hidden');
-            elements.rollDiceBtn.disabled = false;
-        }, 500);
+
+        // 即座にサイコロを振れる状態に戻す
+        gameState.isMoving = false;
+        elements.rollDiceBtn.disabled = false;
+        elements.rollDiceBtn.textContent = 'サイコロを振る';
+        elements.executeEventBtn.disabled = false;
     } else if (effect.type === 'warp') {
         // ワープ処理
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
         const targetPos = effect.value === 'half' ? Math.floor(60 / 2) : effect.value;
         const moveValue = targetPos - currentPlayer.position;
         applyMoveEffect(moveValue);
+    } else if (effect.type === 'swap') {
+        // 位置交換: 一番進んでいるプレイヤーと位置を交換
+        executeSwapEvent();
+    } else if (effect.type === 'double_next') {
+        // スピードアップ: 次のターン2倍
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+        currentPlayer.doubleNext = true;
+        elements.eventModal.classList.remove('show');
+        setTimeout(() => nextTurn(), 500);
+    } else if (effect.type === 'choice_dice') {
+        // サイコロ2回振って選ぶ
+        executeChoiceDiceEvent(effect.rolls);
+    } else if (effect.type === 'shield') {
+        // ネガティブ無効化シールド
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+        currentPlayer.shieldTurns = effect.turns;
+        elements.eventModal.classList.remove('show');
+        setTimeout(() => nextTurn(), 500);
+    } else if (effect.type === 'all_move') {
+        // 全員ボーナス
+        executeAllMoveEvent(effect.self, effect.others);
     }
 }
 
@@ -771,6 +866,12 @@ async function showWinnerModal(winner) {
 
 // ===== 次のターン =====
 function nextTurn() {
+    // 現在のプレイヤーのシールドターンをデクリメント
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (currentPlayer.shieldTurns > 0) {
+        currentPlayer.shieldTurns--;
+    }
+
     // 次のプレイヤーを探す（ゴール済みのプレイヤーはスキップ）
     let nextIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
     let attempts = 0;
@@ -872,6 +973,108 @@ function resetGame() {
     document.body.className = '';
 
     generatePlayerInputs();
+}
+
+// ===== スペシャルイベント: 位置交換 =====
+async function executeSwapEvent() {
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+
+    // 自分以外で一番進んでいるプレイヤーを探す
+    let topPlayer = null;
+    let topPosition = -1;
+
+    gameState.players.forEach((player, index) => {
+        if (index !== gameState.currentPlayerIndex && !player.isFinished && player.position > topPosition) {
+            topPlayer = player;
+            topPosition = player.position;
+        }
+    });
+
+    if (topPlayer && topPosition > currentPlayer.position) {
+        // 位置を交換
+        const tempPos = currentPlayer.position;
+        currentPlayer.position = topPlayer.position;
+        topPlayer.position = tempPos;
+
+        elements.eventEffect.textContent = `${topPlayer.name}と位置を交換！（${topPlayer.position}マス ⇄ ${currentPlayer.position}マス）`;
+
+        updateBoard();
+        await playSound('move');
+
+        setTimeout(() => {
+            elements.eventModal.classList.remove('show');
+            setTimeout(() => nextTurn(), 500);
+        }, 2000);
+    } else {
+        elements.eventEffect.textContent = '交換できるプレイヤーがいません！';
+        setTimeout(() => {
+            elements.eventModal.classList.remove('show');
+            setTimeout(() => nextTurn(), 500);
+        }, 1500);
+    }
+}
+
+// ===== スペシャルイベント: サイコロ2回振って選ぶ =====
+function executeChoiceDiceEvent(rolls) {
+    elements.executeEventBtn.disabled = true;
+
+    // 2回サイコロを振る
+    const dice1 = Math.floor(Math.random() * 6) + 1;
+    const dice2 = Math.floor(Math.random() * 6) + 1;
+
+    elements.eventEffect.textContent = `サイコロ1: ${dice1}、サイコロ2: ${dice2}\nどちらを選びますか？`;
+    elements.executeEventBtn.style.display = 'none';
+
+    // 選択肢ボタンを表示
+    let choiceButtons = document.getElementById('choiceButtons');
+    if (!choiceButtons) {
+        choiceButtons = document.createElement('div');
+        choiceButtons.id = 'choiceButtons';
+        choiceButtons.className = 'choice-buttons';
+        elements.eventModal.querySelector('.modal-content').appendChild(choiceButtons);
+    }
+
+    choiceButtons.innerHTML = `
+        <button class="choice-btn" onclick="applyChoiceDiceResult(${dice1})">サイコロ1 (${dice1})</button>
+        <button class="choice-btn" onclick="applyChoiceDiceResult(${dice2})">サイコロ2 (${dice2})</button>
+    `;
+    choiceButtons.style.display = 'flex';
+}
+
+// グローバルスコープに追加（onclickから呼び出せるように）
+window.applyChoiceDiceResult = function(diceValue) {
+    const choiceButtons = document.getElementById('choiceButtons');
+    if (choiceButtons) choiceButtons.style.display = 'none';
+
+    elements.eventEffect.textContent = `${diceValue}を選択！ → ${diceValue}マス進む！`;
+
+    setTimeout(() => {
+        applyMoveEffect(diceValue);
+    }, 1500);
+};
+
+// ===== スペシャルイベント: 全員ボーナス =====
+async function executeAllMoveEvent(selfMove, othersMove) {
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+
+    elements.eventEffect.textContent = `全員ボーナス！あなたは${selfMove}マス、他のプレイヤーは${othersMove}マス進みます！`;
+
+    setTimeout(async () => {
+        // 他のプレイヤーを移動
+        for (let i = 0; i < gameState.players.length; i++) {
+            if (i !== gameState.currentPlayerIndex && !gameState.players[i].isFinished) {
+                gameState.players[i].position = Math.min(60, gameState.players[i].position + othersMove);
+            }
+        }
+
+        updateBoard();
+        await playSound('move');
+
+        setTimeout(() => {
+            // 自分を移動
+            applyMoveEffect(selfMove);
+        }, 1000);
+    }, 2000);
 }
 
 // ===== ユーティリティ: 色コード取得 =====
