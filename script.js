@@ -450,14 +450,8 @@ async function movePlayer(steps, skipEvent = false) {
         // まだゴールしていないプレイヤーの数を確認
         const remainingPlayers = gameState.players.filter(p => !p.isFinished).length;
 
-        // 最後から2番目のプレイヤーがゴールしたらゲーム終了（1人残し）
-        if (remainingPlayers <= 1) {
-            // 最後のプレイヤーに順位を付ける
-            const lastPlayer = gameState.players.find(p => !p.isFinished);
-            if (lastPlayer) {
-                lastPlayer.rank = gameState.players.length;
-                lastPlayer.isFinished = true;
-            }
+        // すべてのプレイヤーがゴールした場合のみゲーム終了
+        if (remainingPlayers === 0) {
             setTimeout(() => endGame(), 1000);
             return;
         }
