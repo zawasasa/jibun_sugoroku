@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ささの自分すごろく</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- ゲームコンテナ -->
+    <div id="app">
+        <!-- ヘッダー -->
+        <header class="header">
+            <h1 class="title">🎲 ささの自分すごろく</h1>
+            <div class="header-controls">
+                <button id="soundToggleBtn" class="sound-toggle-btn" title="音声をOFFにする">🔊</button>
+                <button id="resetBtn" class="reset-btn" style="display: none;">🔄 リセット</button>
+            </div>
+        </header>
+
+        <!-- プレイヤー設定画面 -->
+        <div id="setupScreen" class="screen">
+            <div class="setup-container">
+                <h2>ゲーム設定</h2>
+
+                <div class="setup-section">
+                    <label for="playerCount">プレイヤー数</label>
+                    <select id="playerCount" class="select-input">
+                        <option value="1">1人</option>
+                        <option value="2" selected>2人</option>
+                        <option value="3">3人</option>
+                        <option value="4">4人</option>
+                    </select>
+                </div>
+
+                <div id="playerInputs" class="player-inputs">
+                    <!-- プレイヤー入力フィールドが動的に生成される -->
+                </div>
+
+                <button id="startGameBtn" class="primary-btn">ゲームスタート!</button>
+            </div>
+        </div>
+
+        <!-- ゲーム画面 -->
+        <div id="gameScreen" class="screen" style="display: none;">
+            <!-- プレイヤーステータス -->
+            <div id="playerStatus" class="player-status">
+                <!-- プレイヤー情報が動的に生成される -->
+            </div>
+
+            <!-- すごろくボード -->
+            <div class="board-container">
+                <div id="board" class="board">
+                    <!-- マスが動的に生成される -->
+                </div>
+            </div>
+
+            <!-- サイコロエリア -->
+            <div class="dice-area">
+                <div class="current-turn">
+                    <span id="currentPlayerName">プレイヤー1</span>のターン
+                </div>
+                <div class="dice-container">
+                    <div id="dice" class="dice">🎲</div>
+                    <div id="diceResult" class="dice-result"></div>
+                </div>
+                <button id="rollDiceBtn" class="primary-btn">サイコロを振る</button>
+            </div>
+        </div>
+
+        <!-- イベントカードモーダル -->
+        <div id="eventModal" class="modal">
+            <div class="modal-content">
+                <div id="eventCard" class="event-card">
+                    <div class="event-header">
+                        <span id="eventType" class="event-type">🟢 ポジティブイベント</span>
+                    </div>
+                    <div id="eventText" class="event-text"></div>
+                    <div id="eventEffect" class="event-effect"></div>
+                    <button id="executeEventBtn" class="primary-btn">イベント実行</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ゲーム終了画面 -->
+        <div id="endScreen" class="screen" style="display: none;">
+            <div class="end-container">
+                <h2 class="end-title">🎉 ゲーム終了!</h2>
+                <div id="winnerInfo" class="winner-info"></div>
+                <button id="playAgainBtn" class="primary-btn">もう一度遊ぶ</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="events.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
