@@ -352,92 +352,75 @@ body.turn-yellow {
 }
 
 /* 偶数行（2行目、4行目、6行目）を逆順に配置して蛇行させる */
+/* ボードは0-60の61マス。nth-child(1)=マス0、nth-child(11)=マス10、nth-child(61)=マス60 */
 
-/* 2行目 (11-20) を逆順に */
-.cell:nth-child(n+11):nth-child(-n+20) {
+/* 2行目 (11-20): nth-child(12)-nth-child(21) を逆順に */
+.cell:nth-child(n+12):nth-child(-n+21) {
     direction: rtl;
 }
 
-.cell:nth-child(n+11):nth-child(-n+20) .cell-number,
-.cell:nth-child(n+11):nth-child(-n+20) .cell-icon,
-.cell:nth-child(n+11):nth-child(-n+20) .cell-players {
+.cell:nth-child(n+12):nth-child(-n+21) .cell-number,
+.cell:nth-child(n+12):nth-child(-n+21) .cell-icon,
+.cell:nth-child(n+12):nth-child(-n+21) .cell-players {
     direction: ltr;
 }
 
-/* 2行目の矢印を左向きに */
-.cell:nth-child(n+11):nth-child(-n+19)::after {
+/* 2行目の矢印を左向きに (マス11-19) */
+.cell:nth-child(n+12):nth-child(-n+20)::after {
     content: '←';
     right: auto;
     left: -18px;
 }
 
-.cell:nth-child(20)::after {
-    content: '↓';
-    left: 50%;
-    top: auto;
-    bottom: -20px;
-    transform: translateX(-50%);
-}
-
-/* 4行目 (31-40) も同様に */
-.cell:nth-child(n+31):nth-child(-n+40) {
+/* 4行目 (31-40): nth-child(32)-nth-child(41) を逆順に */
+.cell:nth-child(n+32):nth-child(-n+41) {
     direction: rtl;
 }
 
-.cell:nth-child(n+31):nth-child(-n+40) .cell-number,
-.cell:nth-child(n+31):nth-child(-n+40) .cell-icon,
-.cell:nth-child(n+31):nth-child(-n+40) .cell-players {
+.cell:nth-child(n+32):nth-child(-n+41) .cell-number,
+.cell:nth-child(n+32):nth-child(-n+41) .cell-icon,
+.cell:nth-child(n+32):nth-child(-n+41) .cell-players {
     direction: ltr;
 }
 
-.cell:nth-child(n+31):nth-child(-n+39)::after {
+/* 4行目の矢印を左向きに (マス31-39) */
+.cell:nth-child(n+32):nth-child(-n+40)::after {
     content: '←';
     right: auto;
     left: -18px;
 }
 
-.cell:nth-child(40)::after {
-    content: '↓';
-    left: 50%;
-    top: auto;
-    bottom: -20px;
-    transform: translateX(-50%);
-}
-
-/* 6行目 (51-60) も同様に */
-.cell:nth-child(n+51):nth-child(-n+60) {
+/* 6行目 (51-60): nth-child(52)-nth-child(61) を逆順に */
+.cell:nth-child(n+52):nth-child(-n+61) {
     direction: rtl;
 }
 
-.cell:nth-child(n+51):nth-child(-n+60) .cell-number,
-.cell:nth-child(n+51):nth-child(-n+60) .cell-icon,
-.cell:nth-child(n+51):nth-child(-n+60) .cell-players {
+.cell:nth-child(n+52):nth-child(-n+61) .cell-number,
+.cell:nth-child(n+52):nth-child(-n+61) .cell-icon,
+.cell:nth-child(n+52):nth-child(-n+61) .cell-players {
     direction: ltr;
 }
 
-.cell:nth-child(n+51):nth-child(-n+59)::after {
+/* 6行目の矢印を左向きに (マス51-59) */
+.cell:nth-child(n+52):nth-child(-n+60)::after {
     content: '←';
     right: auto;
     left: -18px;
 }
 
-.cell:nth-child(60)::after {
+/* 各行の最後のマスの矢印を下向きに */
+/* マス10, 20, 30, 40, 50 の後 */
+.cell:nth-child(11)::after,
+.cell:nth-child(21)::after,
+.cell:nth-child(31)::after,
+.cell:nth-child(41)::after,
+.cell:nth-child(51)::after {
     content: '↓';
     left: 50%;
+    right: auto;
     top: auto;
     bottom: -20px;
     transform: translateX(-50%);
-}
-
-/* 各行の最後のマス（10, 30, 50）の矢印を下向きに */
-.cell:nth-child(10)::after,
-.cell:nth-child(30)::after,
-.cell:nth-child(50)::after {
-    content: '↓';
-    right: 50%;
-    top: auto;
-    bottom: -20px;
-    transform: translateX(50%);
 }
 
 /* ゴールマスには矢印をつけない */
@@ -507,8 +490,8 @@ body.turn-yellow {
 }
 
 .cell-stop {
-    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-    border: 3px solid #ff4b2b;
+    background: linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%);
+    border: 3px solid #7c3aed;
 }
 
 .cell-normal {
