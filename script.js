@@ -203,7 +203,6 @@ function setupEventListeners() {
 // ===== プレイヤー入力フィールド生成 =====
 function generatePlayerInputs() {
     const count = parseInt(elements.playerCount.value);
-    const colors = ['red', 'blue', 'green', 'yellow'];
     const defaultNames = ['プレイヤー1', 'プレイヤー2', 'プレイヤー3', 'プレイヤー4'];
 
     elements.playerInputs.innerHTML = '';
@@ -214,44 +213,27 @@ function generatePlayerInputs() {
         div.innerHTML = `
             <h3>${defaultNames[i]}</h3>
             <div class="input-row">
-                <input type="text" class="text-input player-name-input" 
+                <input type="text" class="text-input player-name-input"
                        placeholder="名前を入力" value="${defaultNames[i]}" data-player="${i}">
-            </div>
-            <div class="color-options" data-player="${i}">
-                ${colors.map(color => `
-                    <div class="color-option color-${color} ${color === colors[i] ? 'selected' : ''}" 
-                         data-color="${color}"></div>
-                `).join('')}
             </div>
         `;
         elements.playerInputs.appendChild(div);
     }
-
-    // 色選択イベント
-    document.querySelectorAll('.color-option').forEach(option => {
-        option.addEventListener('click', function () {
-            const playerIndex = this.parentElement.dataset.player;
-            document.querySelectorAll(`[data-player="${playerIndex}"] .color-option`).forEach(opt => {
-                opt.classList.remove('selected');
-            });
-            this.classList.add('selected');
-        });
-    });
 }
 
 // ===== ゲーム開始 =====
 function startGame() {
     const count = parseInt(elements.playerCount.value);
     gameState.players = [];
+    const fixedColors = ['red', 'blue', 'green', 'yellow'];
 
     // プレイヤー情報取得
     for (let i = 0; i < count; i++) {
         const nameInput = document.querySelector(`.player-name-input[data-player="${i}"]`);
-        const selectedColor = document.querySelector(`[data-player="${i}"] .color-option.selected`);
 
         gameState.players.push({
             name: nameInput.value || `プレイヤー${i + 1}`,
-            color: selectedColor ? selectedColor.dataset.color : ['red', 'blue', 'green', 'yellow'][i],
+            color: fixedColors[i], // 色を固定で割り当て
             emoji: playerEmojis[i], // 絵文字を追加
             position: 0,
             rank: null, // 順位（null = まだゴールしていない）
