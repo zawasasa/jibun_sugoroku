@@ -289,6 +289,21 @@ function generateBoard() {
         gameState.board[pos] = { type: 'stop' };
     });
 
+    // ゲーム後半(31-59マス)にスペシャルマスを追加配置
+    // 通常マスを5個スペシャルマスに変更
+    const lateGameRange = [];
+    for (let i = 31; i < 60; i++) {
+        if (gameState.board[i].type === 'normal' && i !== 45) {
+            lateGameRange.push(i);
+        }
+    }
+    // ランダムに5個選んでスペシャルに変更
+    for (let i = 0; i < Math.min(5, lateGameRange.length); i++) {
+        const randomIndex = Math.floor(Math.random() * lateGameRange.length);
+        const pos = lateGameRange.splice(randomIndex, 1)[0];
+        gameState.board[pos] = { type: 'special' };
+    }
+
     // ゴール
     gameState.board.push({ type: 'goal' });
 
@@ -367,15 +382,23 @@ async function rollDice() {
     elements.rollDiceBtn.disabled = true;
     elements.dice.classList.add('rolling');
 
+    // 1番負けている人のサイコロブースト判定
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    const activePlayers = gameState.players.filter(p => !p.isFinished);
+    const topPlayer = activePlayers.reduce((max, p) => p.position > max.position ? p : max, activePlayers[0]);
+    const lastPlayer = activePlayers.reduce((min, p) => p.position < min.position ? p : min, activePlayers[0]);
+    const isLastPlayer = currentPlayer === lastPlayer && activePlayers.length > 1;
+    const isLateGame = topPlayer.position >= 30;
+    const maxDiceValue = (isLastPlayer && isLateGame) ? 10 : 6;
+
     // アニメーション
     let count = 0;
     const interval = setInterval(async () => {
-        elements.dice.textContent = Math.floor(Math.random() * 6) + 1;
+        elements.dice.textContent = Math.floor(Math.random() * maxDiceValue) + 1;
         count++;
         if (count > 10) {
             clearInterval(interval);
-            let result = Math.floor(Math.random() * 6) + 1;
-            const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+            let result = Math.floor(Math.random() * maxDiceValue) + 1;
 
             // スピードアップ効果（2倍）をチェック
             if (currentPlayer.doubleNext) {
@@ -385,7 +408,11 @@ async function rollDice() {
                 currentPlayer.doubleNext = false; // フラグをリセット
             } else {
                 elements.dice.textContent = result;
-                elements.diceResult.textContent = `${result}が出た!`;
+                if (maxDiceValue === 10) {
+                    elements.diceResult.textContent = `${result}が出た! 🚀 逆転チャンス（最大10）`;
+                } else {
+                    elements.diceResult.textContent = `${result}が出た!`;
+                }
             }
 
             elements.dice.classList.remove('rolling');
@@ -417,44 +444,84 @@ async function movePlayer(steps, skipEvent = false) {
 
         // ゴールを超える場合は一旦60まで進む
         if (nextPos > 60) {
-            // 残りのステップを計算
-            const remainingSteps = absSteps - i;
-            const overshoot = nextPos - 60;
+            // ゲーム終盤かつトップの人の場合は最後のストップマスに戻す
+            const activePlayers = gameState.players.filter(p => !p.isFinished);
+            const topPlayer = activePlayers.reduce((max, p) => p.position > max.position ? p : max, activePlayers[0]);
+            const isTopPlayer = currentPlayer === topPlayer;
+            const isEndGame = topPlayer.position >= 45;
 
-            // 60まで進む
-            currentPlayer.position = 60;
-            updateBoard();
-            await playSound('move');
-
-            const marker60 = document.querySelector(`[data-position="60"] .cell-player-marker`);
-            if (marker60) {
-                marker60.classList.add('jumping');
-                await new Promise(r => setTimeout(r, 300));
-                marker60.classList.remove('jumping');
-            } else {
-                await new Promise(r => setTimeout(r, 300));
-            }
-
-            // 超えた分だけ引き返す
-            for (let j = 0; j < overshoot; j++) {
-                currentPlayer.position--;
-                if (currentPlayer.position < 0) {
-                    currentPlayer.position = 0;
-                    break;
-                }
+            if (isTopPlayer && isEndGame) {
+                // トップがゴールを過ぎた場合、45マス（最後のストップマス）に戻される
+                currentPlayer.position = 60;
                 updateBoard();
                 await playSound('move');
 
-                const markerBack = document.querySelector(`[data-position="${currentPlayer.position}"] .cell-player-marker`);
-                if (markerBack) {
-                    markerBack.classList.add('jumping');
+                const marker60 = document.querySelector(`[data-position="60"] .cell-player-marker`);
+                if (marker60) {
+                    marker60.classList.add('jumping');
                     await new Promise(r => setTimeout(r, 300));
-                    markerBack.classList.remove('jumping');
+                    marker60.classList.remove('jumping');
                 } else {
                     await new Promise(r => setTimeout(r, 300));
                 }
+
+                // 45マスに戻す
+                currentPlayer.position = 45;
+                updateBoard();
+                await playSound('negative'); // ペナルティ音
+
+                const marker45 = document.querySelector(`[data-position="45"] .cell-player-marker`);
+                if (marker45) {
+                    marker45.classList.add('jumping');
+                    await new Promise(r => setTimeout(r, 300));
+                    marker45.classList.remove('jumping');
+                } else {
+                    await new Promise(r => setTimeout(r, 300));
+                }
+
+                // メッセージ表示
+                elements.diceResult.textContent = '⚠️ ゴールオーバー！ストップマスに戻されました！';
+                break;
+            } else {
+                // 通常のバウンス処理
+                const remainingSteps = absSteps - i;
+                const overshoot = nextPos - 60;
+
+                // 60まで進む
+                currentPlayer.position = 60;
+                updateBoard();
+                await playSound('move');
+
+                const marker60 = document.querySelector(`[data-position="60"] .cell-player-marker`);
+                if (marker60) {
+                    marker60.classList.add('jumping');
+                    await new Promise(r => setTimeout(r, 300));
+                    marker60.classList.remove('jumping');
+                } else {
+                    await new Promise(r => setTimeout(r, 300));
+                }
+
+                // 超えた分だけ引き返す
+                for (let j = 0; j < overshoot; j++) {
+                    currentPlayer.position--;
+                    if (currentPlayer.position < 0) {
+                        currentPlayer.position = 0;
+                        break;
+                    }
+                    updateBoard();
+                    await playSound('move');
+
+                    const markerBack = document.querySelector(`[data-position="${currentPlayer.position}"] .cell-player-marker`);
+                    if (markerBack) {
+                        markerBack.classList.add('jumping');
+                        await new Promise(r => setTimeout(r, 300));
+                        markerBack.classList.remove('jumping');
+                    } else {
+                        await new Promise(r => setTimeout(r, 300));
+                    }
+                }
+                break;
             }
-            break;
         }
 
         currentPlayer.position = nextPos;
