@@ -15,32 +15,42 @@ let gameState = {
 const playerEmojis = ['🚀', '🎯', '⭐', '🎨'];
 
 // ===== 音声システム =====
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let audioContext = null;
+
+function initAudioContext() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioContext;
+}
 
 async function playSound(type) {
     if (!gameState.soundEnabled) return;
 
+    // AudioContextを初期化（スマホ対応）
+    const context = initAudioContext();
+
     // ブラウザの制限により停止している場合は再開
-    if (audioContext.state === 'suspended') {
-        await audioContext.resume();
+    if (context.state === 'suspended') {
+        await context.resume();
     }
 
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
 
     oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    gainNode.connect(context.destination);
 
-    const now = audioContext.currentTime;
+    const now = context.currentTime;
 
     switch (type) {
         case 'dice':
             // サイコロ音: カラカラカラという振る音
             for (let i = 0; i < 5; i++) {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
+                const osc = context.createOscillator();
+                const gain = context.createGain();
                 osc.connect(gain);
-                gain.connect(audioContext.destination);
+                gain.connect(context.destination);
 
                 osc.type = 'square';
                 osc.frequency.setValueAtTime(100 + Math.random() * 200, now + i * 0.08);
@@ -64,10 +74,10 @@ async function playSound(type) {
             // イベントカード出現音: ジャジャーン!
             const cardFreqs = [392, 523, 659]; // G, C, E
             cardFreqs.forEach((freq, index) => {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
+                const osc = context.createOscillator();
+                const gain = context.createGain();
                 osc.connect(gain);
-                gain.connect(audioContext.destination);
+                gain.connect(context.destination);
 
                 osc.frequency.setValueAtTime(freq, now + index * 0.1);
                 gain.gain.setValueAtTime(0.25, now + index * 0.1);
@@ -81,10 +91,10 @@ async function playSound(type) {
             // ポジティブイベント: キラキラ上昇音
             const posFreqs = [523, 659, 784, 1047]; // C, E, G, C (高)
             posFreqs.forEach((freq, index) => {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
+                const osc = context.createOscillator();
+                const gain = context.createGain();
                 osc.connect(gain);
-                gain.connect(audioContext.destination);
+                gain.connect(context.destination);
 
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(freq, now + index * 0.08);
@@ -99,10 +109,10 @@ async function playSound(type) {
             // ネガティブイベント: デデデデーン(下降音)
             const negFreqs = [392, 349, 294, 262]; // G, F, D, C (下降)
             negFreqs.forEach((freq, index) => {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
+                const osc = context.createOscillator();
+                const gain = context.createGain();
                 osc.connect(gain);
-                gain.connect(audioContext.destination);
+                gain.connect(context.destination);
 
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(freq, now + index * 0.12);
@@ -126,10 +136,10 @@ async function playSound(type) {
             // ゴール音: ファンファーレ風
             const goalFreqs = [523, 659, 784, 1047]; // C, E, G, C
             goalFreqs.forEach((freq, index) => {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
+                const osc = context.createOscillator();
+                const gain = context.createGain();
                 osc.connect(gain);
-                gain.connect(audioContext.destination);
+                gain.connect(context.destination);
 
                 osc.frequency.setValueAtTime(freq, now + index * 0.15);
                 gain.gain.setValueAtTime(0.2, now + index * 0.15);
@@ -374,9 +384,10 @@ function updateCurrentTurn() {
 async function rollDice() {
     if (gameState.isMoving) return;
 
-    // AudioContextを再開
-    if (audioContext.state === 'suspended') {
-        await audioContext.resume();
+    // AudioContextを初期化・再開（スマホ対応）
+    const context = initAudioContext();
+    if (context.state === 'suspended') {
+        await context.resume();
     }
 
     elements.rollDiceBtn.disabled = true;
